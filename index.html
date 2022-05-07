@@ -30,6 +30,9 @@
                 display: flex;
                 justify-content: center;
                 align-items: center;
+            }
+
+            .full-screen {
                 height: 100vh;
                 width: 100vw;
             }
@@ -38,25 +41,104 @@
                 width: 80%;
                 height: 80%;
             }
+
+            .input-container {
+                margin: 0 20px;
+            }
         </style>
     </head>
 
     <body>
-        <div class="container">
+        <div class="container full-screen">
             <div>
                 <h1 class="h1">Fractal Tree Viewer</h1>
                 <canvas id="canvas"></canvas>
+                <div class="container">
+                    <div class="input-container">
+                        <label for="angle-range">Angle</label>
+                        <input type="range"
+                               name="angle"
+                               id="angle-range"
+                               min="2"
+                               max="90">
+                        <p id="angle-value"></p>
+                    </div>
+                    <div class="input-container">
+                        <label for="length-range">Length</label>
+                        <input type="range"
+                               name="length"
+                               id="length-range"
+                               min="10"
+                               max="95">
+                        <p id="length-value"></p>
+                    </div>
+                    <div class="input-container">
+                        <label for="scale-range">Scale</label>
+                        <input type="range"
+                               name="scale"
+                               id="scale-range"
+                               min="60"
+                               max="85">
+                        <p id="scale-value"></p>
+                    </div>
+                </div>
             </div>
         </div>
         <script>
+            let canvasWidth;
+            let canvasHeight;
+            let angle = 0.5;
+            let lengthInput;
+            let scale = 0.8;
+            const angleRange = document.getElementById('angle-range');
+            const angleValueEl = document.getElementById('angle-value');
+            const lengthRange = document.getElementById('length-range');
+            const lengthValueEl = document.getElementById('length-value');
+            const scaleRange = document.getElementById('scale-range');
+            const scaleValueEl = document.getElementById('scale-value');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             window.addEventListener('resize', render);
+
+            function onAngleInput(event) {
+                const { value } = event.target;
+                angleValueEl.innerHTML = value / 100;
+                angle = value / 100;
+                render();
+            }
+            angleRange.addEventListener('input', onAngleInput);
+
+            function onLengthInput(event) {
+                const { value } = event.target;
+                lengthValueEl.innerHTML = value;
+                setLengthInput();
+                render();
+            }
+            lengthRange.addEventListener('input', onLengthInput);
+
+            function onScaleInput(event) {
+                const { value } = event.target;
+                console.log('scale value: ', value)
+                scaleValueEl.innerHTML = value / 100;
+                scale = value / 100;
+                render();
+            }
+            scaleRange.addEventListener('input', onScaleInput);
+
+            function setLengthInput() {
+                canvasWidth = canvasWidth || 600;
+                canvasHeight = canvasHeight || 300;
+                lengthInput = (canvasWidth / canvasHeight) * lengthRange.value;
+            }
+
+            angleValueEl.innerHTML = angleRange.value / 100;
+            lengthValueEl.innerHTML = lengthRange.value;
+            scaleValueEl.innerHTML = scaleRange.value / 100;
             function render() {
                 const windowWidth = window.innerWidth;
                 const windowHeight = window.innerHeight;
-                const canvasWidth = windowWidth * 0.8;
-                const canvasHeight = windowHeight * 0.8;
+                canvasWidth = windowWidth * 0.8;
+                canvasHeight = windowHeight * 0.8;
                 const retinaWidth = canvasWidth * window.devicePixelRatio;
                 const retinaHeight = canvasHeight * window.devicePixelRatio
                 canvas.style.width = `${canvasWidth}px`;
@@ -64,7 +146,10 @@
                 canvas.setAttribute('width', retinaWidth);
                 canvas.setAttribute('height', retinaHeight);
                 context.scale(window.devicePixelRatio, window.devicePixelRatio);
+                setLengthInput();
+
                 function branch(length, angle, scale) {
+                    context.fillStyle = '#333';
                     context.fillRect(0, 0, 1, length);
                     if (length < 8) return;
                     context.save();
@@ -76,7 +161,7 @@
                     context.restore();
                 }
                 context.translate(canvasWidth / 2, 0);
-                branch((canvasWidth / canvasHeight) * 80, 0.6, 0.8);
+                branch(lengthInput, angle, scale);
             }
             render();
         </script>

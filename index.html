@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible"
+              content="IE=edge">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+        <style>
+            *,
+            *::after,
+            *::before {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: Helvetica, Arial, sans-serif;
+            }
+
+            .h1 {
+                margin-bottom: 15px;
+                color: #333;
+            }
+
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                width: 100vw;
+            }
+
+            #canvas {
+                width: 80%;
+                height: 80%;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <div>
+                <h1 class="h1">Fractal Tree Viewer</h1>
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+        <script>
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            window.addEventListener('resize', render);
+            function render() {
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                const canvasWidth = windowWidth * 0.8;
+                const canvasHeight = windowHeight * 0.8;
+                const retinaWidth = canvasWidth * window.devicePixelRatio;
+                const retinaHeight = canvasHeight * window.devicePixelRatio
+                canvas.style.width = `${canvasWidth}px`;
+                canvas.style.height = `${canvasHeight}px`;
+                canvas.setAttribute('width', retinaWidth);
+                canvas.setAttribute('height', retinaHeight);
+                context.scale(window.devicePixelRatio, window.devicePixelRatio);
+                function branch(length, angle, scale) {
+                    context.fillRect(0, 0, 1, length);
+                    if (length < 8) return;
+                    context.save();
+                    context.translate(0, length);
+                    context.rotate(-angle);
+                    branch(length * scale, angle, scale);
+                    context.rotate(2 * angle);
+                    branch(length * scale, angle, scale);
+                    context.restore();
+                }
+                context.translate(canvasWidth / 2, 0);
+                branch((canvasWidth / canvasHeight) * 80, 0.6, 0.8);
+            }
+            render();
+        </script>
+    </body>
+
+</html>

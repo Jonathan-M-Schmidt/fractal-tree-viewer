@@ -45,6 +45,17 @@
             .input-container {
                 margin: 0 20px;
             }
+
+            button {
+                padding: 8px;
+                font-size: 1.1rem;
+                margin: 10px;
+            }
+
+            #A-btn.active,
+            #B-btn.active {
+                color: orangered;
+            }
         </style>
     </head>
 
@@ -59,8 +70,10 @@
                         <input type="range"
                                name="angle"
                                id="angle-range"
-                               min="2"
-                               max="90">
+                               min="0"
+                               max="1"
+                               value="0.5"
+                               step="0.01">
                         <p id="angle-value"></p>
                     </div>
                     <div class="input-container">
@@ -69,7 +82,8 @@
                                name="length"
                                id="length-range"
                                min="10"
-                               max="95">
+                               max="95"
+                               value="60">
                         <p id="length-value"></p>
                     </div>
                     <div class="input-container">
@@ -77,10 +91,20 @@
                         <input type="range"
                                name="scale"
                                id="scale-range"
-                               min="60"
-                               max="85">
+                               min="0.6"
+                               max="0.85"
+                               value="0.8"
+                               step="0.01">
                         <p id="scale-value"></p>
                     </div>
+                </div>
+                <div class="container">
+                    <button id="keyframe-btn">
+                        <span id="A-btn">A</span>
+                        <span id="B-btn">B</span>
+                    </button>
+                    <button id="play-btn"
+                            disabled>Play</button>
                 </div>
             </div>
         </div>
@@ -90,20 +114,39 @@
             let angle = 0.5;
             let lengthInput;
             let scale = 0.8;
+            const keyframes = new Proxy({
+                A: null,
+                B: null,
+            }, {
+                set(obj, prop, newVal) {
+                    obj[prop] = newVal;
+                    if (prop === 'B' && newVal) {
+                        playBtn.removeAttribute('disabled');
+                    }
+                    if (prop === 'A' && !newVal) {
+                        playBtn.setAttribute('disabled', true);
+                    }
+                    return true;
+                }
+            })
             const angleRange = document.getElementById('angle-range');
             const angleValueEl = document.getElementById('angle-value');
             const lengthRange = document.getElementById('length-range');
             const lengthValueEl = document.getElementById('length-value');
             const scaleRange = document.getElementById('scale-range');
             const scaleValueEl = document.getElementById('scale-value');
+            const keyframeBtn = document.getElementById('keyframe-btn');
+            const aBtn = document.getElementById('A-btn');
+            const bBtn = document.getElementById('B-btn');
+            const playBtn = document.getElementById('play-btn');
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
             window.addEventListener('resize', render);
 
             function onAngleInput(event) {
                 const { value } = event.target;
-                angleValueEl.innerHTML = value / 100;
-                angle = value / 100;
+                angleValueEl.innerHTML = value;
+                angle = parseFloat(value);
                 render();
             }
             angleRange.addEventListener('input', onAngleInput);
@@ -118,12 +161,86 @@
 
             function onScaleInput(event) {
                 const { value } = event.target;
-                console.log('scale value: ', value)
-                scaleValueEl.innerHTML = value / 100;
-                scale = value / 100;
+                scaleValueEl.innerHTML = value;
+                scale = parseFloat(value);
                 render();
             }
             scaleRange.addEventListener('input', onScaleInput);
+
+
+            // Animation
+            function onKeyframeClick(event) {
+                const keyframe = {
+                    lengthInput,
+                    angle,
+                    scale,
+                }
+                if (!keyframes.A) {
+                    keyframes.A = keyframe;
+                    aBtn.classList.add('active');
+                } else if (!keyframes.B) {
+                    keyframes.B = keyframe;
+                    bBtn.classList.add('active');
+                } else {
+                    keyframes.A = null;
+                    keyframes.B = null;
+                    [aBtn, bBtn].forEach(btn => btn.classList.remove('active'));
+                }
+            }
+            keyframeBtn.addEventListener('click', onKeyframeClick);
+
+            let start;
+            let previousTimeStamp;
+            let playing = new Proxy({ value: null }, {
+                set(obj, prop, value) {
+                    if (value) {
+                        playBtn.setAttribute('disabled', true);
+                    } else {
+                        playBtn.removeAttribute('disabled');
+                    }
+                }
+            });
+            function onPlayBtnClick() {
+                start = null;
+                previousTimeStamp = null;
+                const { A } = keyframes;
+                lengthInput = A.lengthInput;
+                angle = A.angle;
+                scale = A.scale;
+                requestAnimationFrame(animate);
+            }
+            playBtn.addEventListener('click', onPlayBtnClick);
+            function getStep(a, b) {
+                const sorted = [a, b].sort((a, b) => a - b);
+                const prefix = val => a > b ? -val : val;
+                return prefix((sorted[1] - sorted[0]) / 120);
+            }
+
+            function animate(timestamp) {
+                if (!start) {
+                    start = timestamp;
+                }
+                playing.value = true;
+                const elapsed = timestamp - start;
+
+                if (previousTimeStamp !== timestamp) {
+                    const { A, B } = keyframes;
+                    const lenStep = getStep(A.lengthInput, B.lengthInput);
+                    const angleStep = getStep(A.angle, B.angle);
+                    const scaleStep = getStep(A.scale, B.scale);
+                    render();
+                    lengthInput += lenStep;
+                    angle += angleStep;
+                    scale += scaleStep;
+                }
+
+                if (elapsed < 2000) {
+                    previousTimeStamp = timestamp
+                    window.requestAnimationFrame(animate);
+                } else {
+                    playing.value = false;
+                }
+            }
 
             function setLengthInput() {
                 canvasWidth = canvasWidth || 600;
@@ -131,9 +248,9 @@
                 lengthInput = (canvasWidth / canvasHeight) * lengthRange.value;
             }
 
-            angleValueEl.innerHTML = angleRange.value / 100;
+            angleValueEl.innerHTML = angleRange.value;
             lengthValueEl.innerHTML = lengthRange.value;
-            scaleValueEl.innerHTML = scaleRange.value / 100;
+            scaleValueEl.innerHTML = scaleRange.value;
             function render() {
                 const windowWidth = window.innerWidth;
                 const windowHeight = window.innerHeight;
@@ -146,23 +263,23 @@
                 canvas.setAttribute('width', retinaWidth);
                 canvas.setAttribute('height', retinaHeight);
                 context.scale(window.devicePixelRatio, window.devicePixelRatio);
-                setLengthInput();
 
-                function branch(length, angle, scale) {
+                function branch(length_i, angle_i, scale_i) {
                     context.fillStyle = '#333';
-                    context.fillRect(0, 0, 1, length);
-                    if (length < 8) return;
+                    context.fillRect(0, 0, 1, length_i);
+                    if (length_i < 8) return;
                     context.save();
-                    context.translate(0, length);
-                    context.rotate(-angle);
-                    branch(length * scale, angle, scale);
-                    context.rotate(2 * angle);
-                    branch(length * scale, angle, scale);
+                    context.translate(0, length_i);
+                    context.rotate(-angle_i);
+                    branch(length_i * scale_i, angle_i, scale_i);
+                    context.rotate(2 * angle_i);
+                    branch(length_i * scale_i, angle_i, scale_i);
                     context.restore();
                 }
                 context.translate(canvasWidth / 2, 0);
                 branch(lengthInput, angle, scale);
             }
+            setLengthInput();
             render();
         </script>
     </body>
